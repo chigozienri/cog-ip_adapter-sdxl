@@ -11,7 +11,7 @@ from ip_adapter import IPAdapterXL
 from diffusers import StableDiffusionXLControlNetPipeline, ControlNetModel
 
 base_model_path = "stabilityai/stable-diffusion-xl-base-1.0"
-controlnet_path = "diffusers/controlnet-canny-sdxl-1.0"
+controlnet_path = "diffusers/controlnet-depth-sdxl-1.0"
 image_encoder_path = "/IP-Adapter/models/image_encoder/"
 ip_ckpt = "/IP-Adapter/sdxl-models/ip-adapter_sdxl_vit-h.bin"
 device = "cuda"
@@ -41,7 +41,7 @@ class Predictor(BasePredictor):
              description="Input image"
         ),
         controlnet_input: Path = Input(
-             description="Controlnet Edges"
+             description="Controlnet Depth"
         ),
         controlnet_conditioning_scale: float = Input(
             description="Controlnet conditioning scale", ge=0.0, le=1.0, default=0.6
