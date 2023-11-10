@@ -79,7 +79,7 @@ class Predictor(BasePredictor):
         image.resize((224, 224))
 
         controlnet_input = Image.open(controlnet_input)
-        controlnet_input.resize((224, 224))
+        controlnet_input.resize((1024, 1024))
 
         # load ip-adapter
         ip_model = IPAdapterXL(self.pipe, image_encoder_path, ip_ckpt, device)
