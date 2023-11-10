@@ -7,12 +7,12 @@ import torch
 import shutil
 from PIL import Image
 from typing import List
-from ip_adapter import IPAdapterPlusXL
-from ip_adapter.custom_pipelines import StableDiffusionXLCustomPipeline
+from ip_adapter import IPAdapterXL
+from diffusers import StableDiffusionXLPipeline
 
 base_model_path = "stabilityai/stable-diffusion-xl-base-1.0"
 image_encoder_path = "/IP-Adapter/models/image_encoder/"
-ip_ckpt = "/IP-Adapter/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.bin"
+ip_ckpt = "/IP-Adapter/sdxl-models/ip-adapter_sdxl_vit-h.bin"
 device = "cuda"
 MODEL_CACHE = "model-cache"
 
@@ -24,7 +24,7 @@ class Predictor(BasePredictor):
     def setup(self) -> None:
         """Load the model into memory to make running multiple predictions efficient"""
         # load SDXL pipeline
-        self.pipe = StableDiffusionXLCustomPipeline.from_pretrained(
+        self.pipe = StableDiffusionXLPipeline.from_pretrained(
             base_model_path,
             torch_dtype=torch.float16,
             add_watermarker=False,
@@ -34,16 +34,19 @@ class Predictor(BasePredictor):
     def predict(
         self,
         image: Path = Input(
-             description="Input face image",
+             description="Input image",
              default=None
         ),
         prompt: str = Input(
-            description="Prompt",
-            default="photo of a beautiful girl wearing casual shirt in a garden"
+            description="Prompt (Leave blank to generate image variations)",
+            default=""
         ),
         negative_prompt: str = Input(
             description="Negative Prompt",
             default="monochrome, lowres, bad anatomy, worst quality, low quality"
+        ),
+        scale: float = Input(
+            description="Scale (influence of input image on generation - lower has more of the prompt, higher has more of the image)", ge=0.0, le=1.0, default=0.6
         ),
         num_outputs: int = Input(
             description="Number of images to output.",
@@ -67,7 +70,7 @@ class Predictor(BasePredictor):
         image.resize((224, 224))
 
         # load ip-adapter
-        ip_model = IPAdapterPlusXL(self.pipe, image_encoder_path, ip_ckpt, device, num_tokens=16)
+        ip_model = IPAdapterXL(self.pipe, image_encoder_path, ip_ckpt, device)
 
         images = ip_model.generate(
             pil_image=image,
@@ -75,7 +78,8 @@ class Predictor(BasePredictor):
             num_inference_steps=num_inference_steps,
             seed=seed,
             prompt=prompt,
-            negative_prompt=negative_prompt
+            negative_prompt=negative_prompt,
+            scale=scale
         )
 
         output_paths = []
