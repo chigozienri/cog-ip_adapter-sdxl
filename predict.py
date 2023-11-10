@@ -43,10 +43,10 @@ class Predictor(BasePredictor):
         ),
         negative_prompt: str = Input(
             description="Negative Prompt",
-            default="monochrome, lowres, bad anatomy, worst quality, low quality"
+            default=""
         ),
         scale: float = Input(
-            description="Scale (influence of input image on generation - lower has more of the prompt, higher has more of the image)", ge=0.0, le=1.0, default=0.6
+            description="Scale (influence of input image on generation)", ge=0.0, le=1.0, default=0.6
         ),
         num_outputs: int = Input(
             description="Number of images to output.",
