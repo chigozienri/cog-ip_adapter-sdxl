@@ -8,9 +8,10 @@ import shutil
 from PIL import Image
 from typing import List
 from ip_adapter import IPAdapterXL
-from diffusers import StableDiffusionXLPipeline
+from diffusers import StableDiffusionXLControlNetPipeline, ControlNetModel
 
 base_model_path = "stabilityai/stable-diffusion-xl-base-1.0"
+controlnet_path = "diffusers/controlnet-canny-sdxl-1.0"
 image_encoder_path = "/IP-Adapter/models/image_encoder/"
 ip_ckpt = "/IP-Adapter/sdxl-models/ip-adapter_sdxl_vit-h.bin"
 device = "cuda"
@@ -24,8 +25,11 @@ class Predictor(BasePredictor):
     def setup(self) -> None:
         """Load the model into memory to make running multiple predictions efficient"""
         # load SDXL pipeline
-        self.pipe = StableDiffusionXLPipeline.from_pretrained(
+        controlnet = ControlNetModel.from_pretrained(controlnet_path, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to(device)
+        self.pipe = StableDiffusionXLControlNetPipeline.from_pretrained(
             base_model_path,
+            controlnet=controlnet,
+            use_safetensors=True,
             torch_dtype=torch.float16,
             add_watermarker=False,
             cache_dir=MODEL_CACHE,
@@ -34,11 +38,16 @@ class Predictor(BasePredictor):
     def predict(
         self,
         image: Path = Input(
-             description="Input image",
-             default=None
+             description="Input image"
+        ),
+        controlnet_input: Path = Input(
+             description="Controlnet Edges"
+        ),
+        controlnet_conditioning_scale: float = Input(
+            description="Controlnet conditioning scale", ge=0.0, le=1.0, default=0.6
         ),
         prompt: str = Input(
-            description="Prompt (Leave blank to generate image variations)",
+            description="Prompt",
             default=""
         ),
         negative_prompt: str = Input(
@@ -69,11 +78,16 @@ class Predictor(BasePredictor):
         image = Image.open(image)
         image.resize((224, 224))
 
+        controlnet_input = Image.open(controlnet_input)
+        controlnet_input.resize((224, 224))
+
         # load ip-adapter
         ip_model = IPAdapterXL(self.pipe, image_encoder_path, ip_ckpt, device)
 
         images = ip_model.generate(
             pil_image=image,
+            image=controlnet_input,
+            controlnet_conditioning_scale=controlnet_conditioning_scale,
             num_samples=num_outputs,
             num_inference_steps=num_inference_steps,
             seed=seed,
